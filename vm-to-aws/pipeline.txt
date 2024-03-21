@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Clone Repository') {
+            steps {
+                git 'https://github.com/Udit-d/netflix-clone-CI-CD.git'
+            }
+        }
+        stage('SonarQube Code Scanning') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonarq'
+                    withSonarQubeEnv('sonarq') {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=sonarq \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.token=sqp_98cf10e50721b0e2367a0b133db1d1981c435be3
+                        """
+                    }
+                }
+            }
+        }
+        stage('Build Docker') {
+            steps {
+                script {
+                    def dockerfile = '/home/killua/Desktop/Udit/TY/netflix-clone/client/Dockerfile'
+                    def dockerimage = 'uditdevadiga/netflixclone:latest'
+                    docker.build(dockerimage, "-f ${dockerfile} .")                     
+                }
+            }
+        }
+        stage('Run Docker Compose') {
+            steps {
+                script {
+                    sh 'docker-compose -f /home/killua/Desktop/Udit/TY/netflix-clone/docker-compose.yml down'
+                    sh 'docker-compose -f /home/killua/Desktop/Udit/TY/netflix-clone/docker-compose.yml up -d'
+                    sh 'sleep 10'
+                }
+            }
+        }
+        stage('Selenium Testing') {
+            steps {
+                script {
+                    sh 'pip install pytest pytest-html selenium'
+                    sh 'pip install --upgrade pytest pytest-html selenium'
+                    sh 'export PATH=$PATH:/var/lib/jenkins/.local/bin && pytest /home/killua/Desktop/Udit/TY/netflix-clone/netflix.py --html=report.html'
+                }
+            }
+        }
+        stage("Load Testing") {
+            steps {
+                script {
+            // Run Locust in headless mode and save statistics to a CSV file
+                    sh '/var/lib/jenkins/.local/bin/locust -f /home/killua/Desktop/locust.py --csv=/home/killua/Desktop/logs/my_stats --headless --host=http://localhost:3000 --users 50 --spawn-rate 10 --run-time 40s'
+        }
+    }
+}
+        stage('Push To DockerHub') {
+            steps {
+                script {
+                    def dockerimage = docker.image('uditdevadiga/netflixclone:latest')
+                    def dockerURL = 'https://index.docker.io/v1/'
+                    withDockerRegistry([credentialsId: 'docker', url: dockerURL]) {
+                        dockerimage.push()
+                    }
+                }
+            }
+        }
+    }
+}
