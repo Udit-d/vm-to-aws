@@ -18,12 +18,12 @@ spec:
       - name: netflix-container
         image: uditdevadiga/netflixclone:latest # Replace with your Docker image path and tag
         ports:
-        - containerPort: 3000
+        - containerPort: 1111
         resources: # Add this section to specify CPU requests and limits
           requests:
             cpu: "100m" # Requesting 0.1 CPU
           limits:
-            cpu: "200m" # Limiting to 0.2 CPU
+            cpu: "300m" # Limiting to 0.2 CPU
 ---
 
 apiVersion: v1
@@ -36,5 +36,5 @@ spec:
     app: netflix-clone
   ports:
     - protocol: TCP
-      port: 9090
-      targetPort: 3000
+      port: 1010
+      targetPort: 1111
